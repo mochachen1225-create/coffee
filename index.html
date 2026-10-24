@@ -12,13 +12,13 @@
 html,body{margin:0;height:100%;overflow:hidden;background:var(--wall);color:var(--o);font-family:var(--ff);
   touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 #app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto}
-header{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 4px}
+header{position:relative;z-index:2;display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 4px}
 #title{font-weight:900;font-size:18px;flex:1}
 #step{font-size:13px;font-weight:700;opacity:.75}
 #timer{font:800 20px ui-monospace,Menlo,monospace;background:#20352c;color:#8dffb8;border:3px solid var(--o);
   border-radius:10px;padding:2px 8px;display:none}
 #mute{width:40px;height:40px;border-radius:50%;border:3px solid var(--o);background:var(--cream);font-size:18px;padding:0}
-#stage{flex:1;min-height:0;width:100%;display:block}
+#stage{flex:1;min-height:0;width:100%;display:block;overflow:visible}
 #panel{background:var(--cream);border:4px solid var(--o);border-bottom:0;border-radius:24px 24px 0 0;
   padding:14px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -6px 18px rgba(58,36,22,.18)}
 #msg{font-size:16px;line-height:1.5;margin-bottom:10px;min-height:48px}
@@ -138,81 +138,101 @@ const snd=(()=>{let ac,nb,pg,muted=false;
     toggle(){muted=!muted;if(pg)pg.gain.value=0;return muted}}})();
 $('#mute').onclick=()=>{$('#mute').textContent=snd.toggle()?'🔇':'🔊'};
 
-/* ---------- SVG 道具（貼紙風） ---------- */
+/* ---------- SVG 道具（貼紙風：粗外框＋平塗雙色陰影＋白色高光） ---------- */
 const sw=w=>`stroke="${O}" stroke-width="${w}" stroke-linejoin="round"`;
-function bgS(){return `<rect width="360" height="400" fill="#f8e4c3"/><circle cx="60" cy="30" r="110" fill="#fff2d8" opacity=".7"/>
-<rect x="0" y="300" width="360" height="100" fill="#c88746"/>
-<path d="M20 335q60-6 120 0t120 0M40 362q80 8 160 0t140 0M0 388q70-6 140 0" stroke="#a96a33" stroke-width="3" fill="none" stroke-linecap="round"/>
-<rect x="-6" y="292" width="372" height="16" rx="4" fill="#e3a865" ${sw(5)}/>
-<rect x="10" y="296" width="60" height="4" rx="2" fill="#fff" opacity=".5"/>`}
-function beanS(x,y,r){return `<g transform="translate(${x} ${y}) rotate(${r})"><ellipse rx="5.5" ry="4" fill="#7a4524" ${sw(2)}/><path d="M-3 0Q0-1.5 3 0" stroke="${O}" stroke-width="1.5" fill="none"/></g>`}
-function scaleS(cx,by,txt,tare){return `<rect x="${cx-82}" y="${by-36}" width="164" height="36" rx="12" fill="#ece6dc" ${sw(5)}/>
-<rect x="${cx-74}" y="${by-46}" width="148" height="12" rx="6" fill="#bfb6a8" ${sw(4)}/>
-<rect x="${cx-38}" y="${by-29}" width="76" height="22" rx="6" fill="#20352c" ${sw(3)}/>
+const sh=(cx,y,rx)=>`<ellipse cx="${cx}" cy="${y}" rx="${rx}" ry="${rx*.1+3}" fill="${O}" opacity=".16"/>`;
+const ol=(d,w)=>`<path d="${d}" fill="none" ${sw(w)}/>`;
+const hl=(d,w,op)=>`<path d="${d}" stroke="#fff" stroke-width="${w}" fill="none" stroke-linecap="round" opacity="${op||.85}"/>`;
+const DEFS=`<defs><linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8e4c3"/><stop offset="1" stop-color="#f3d5a9"/></linearGradient>
+<linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cf8f4f"/><stop offset="1" stop-color="#ad7036"/></linearGradient>
+<pattern id="tile" width="36" height="18" patternUnits="userSpaceOnUse"><rect width="36" height="18" fill="#f7dfb9"/><path d="M0 .75h36M0 9.75h36M18 0v9M.75 9v9" stroke="#e6c393" stroke-width="1.5"/></pattern></defs>`;
+function bgS(){return DEFS+`<rect y="-400" width="360" height="400" fill="#f8e4c3"/><rect width="360" height="400" fill="url(#wall)"/><rect y="196" width="360" height="100" fill="url(#tile)"/><rect y="192" width="360" height="6" fill="#e9c391"/>
+<rect x="24" y="34" width="96" height="112" rx="14" fill="#fff4d6" ${sw(5)}/><rect x="28" y="92" width="88" height="50" rx="4" fill="#ffe7ad"/><path d="M72 36v108M26 90h92" stroke="${O}" stroke-width="4"/>
+${hl('M38 52l18-10M38 68l30-20M86 108l20-12',5)}<rect x="16" y="142" width="112" height="10" rx="5" fill="#e3a865" ${sw(4)}/>
+<line x1="292" y1="-400" x2="292" y2="34" stroke="${O}" stroke-width="3"/><circle cx="292" cy="62" r="40" fill="#fff3c8" opacity=".6"/>
+<path d="M266 54q26-32 52 0z" fill="#e8735a" ${sw(4)}/><path d="M298 30q12 8 16 20" stroke="#b9503b" stroke-width="5" fill="none"/><circle cx="292" cy="58" r="6" fill="#fff6c8" ${sw(3)}/>
+<rect y="300" width="360" height="100" fill="url(#wood)"/><rect y="308" width="360" height="7" fill="${O}" opacity=".12"/><path d="M90 312v88M210 312v88M320 312v88" stroke="#9c6230" stroke-width="3"/>
+<path d="M14 340q30-5 60 0M110 360q40 6 80 0M228 335q36-5 72 0M240 378q30 5 60 0M20 382q26-4 52 0M130 334q20-4 40 0" stroke="#a0652f" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+<rect x="-6" y="292" width="372" height="16" rx="4" fill="#e3a865" ${sw(5)}/><rect x="12" y="296" width="80" height="4" rx="2" fill="#fff" opacity=".55"/>`}
+function beanS(x,y,r){return `<g transform="translate(${x} ${y}) rotate(${r})"><ellipse rx="5.5" ry="4" fill="#7a4524" ${sw(2)}/><path d="M-3.2 .4Q0-1.4 3.2 .4" stroke="${O}" stroke-width="1.4" fill="none" stroke-linecap="round"/><ellipse cx="-2" cy="-1.9" rx="1.6" ry=".9" fill="#c98d5c"/></g>`}
+function scaleS(cx,by,txt,tare){const body=`M${cx-70} ${by-36}h140q12 0 12 12v12q0 12-12 12h-140q-12 0-12-12v-12q0-12 12-12z`;
+  return sh(cx,by+3,92)+`<rect x="${cx-70}" y="${by-4}" width="16" height="8" rx="3" fill="#6d6259" ${sw(3)}/><rect x="${cx+54}" y="${by-4}" width="16" height="8" rx="3" fill="#6d6259" ${sw(3)}/>
+<path d="${body}" fill="#f2ede5"/><path d="M${cx-82} ${by-14}h164v2q0 12-12 12h-140q-12 0-12-12z" fill="#dcd3c6"/>${ol(body,5)}
+<rect x="${cx-74}" y="${by-46}" width="148" height="12" rx="6" fill="#cbc3b6" ${sw(4)}/><rect x="${cx-66}" y="${by-43}" width="58" height="3" rx="1.5" fill="#fff" opacity=".75"/>
+<rect x="${cx-38}" y="${by-30}" width="76" height="23" rx="6" fill="#1d3029" ${sw(3)}/><rect x="${cx-34}" y="${by-27}" width="22" height="3" rx="1.5" fill="#fff" opacity=".2"/>
 <text x="${cx}" y="${by-12.5}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="15" font-weight="700" fill="#8dffb8">${txt}</text>
-<rect x="${cx-74}" y="${by-31}" width="22" height="6" rx="3" fill="#fff" opacity=".8"/>${tare?`<circle cx="${cx+60}" cy="${by-18}" r="10" fill="#e8735a" ${sw(3)}/><text x="${cx+60}" y="${by-15.5}" text-anchor="middle" font-size="7" font-weight="900" fill="#fff">歸零</text>`:''}`}
-function jarS(tx,ty,rot,open){let b='';[[-18,30],[0,34],[18,28],[-10,20],[10,22],[-20,10],[18,12]].forEach((p,i)=>b+=beanS(p[0],p[1],i*40));
-  return `<g transform="translate(${tx} ${ty}) rotate(${rot})"><rect x="-34" y="-40" width="68" height="86" rx="16" fill="#fdf3dc" ${sw(5)}/>${b}
-<rect x="-26" y="-14" width="52" height="24" rx="6" fill="#f7c873" ${sw(3)}/><text x="0" y="3" text-anchor="middle" font-size="12" font-weight="800" fill="${O}">咖啡豆</text>
-<rect x="-27" y="-34" width="7" height="18" rx="3.5" fill="#fff"/>
-${open?`<ellipse cx="0" cy="-40" rx="30" ry="6" fill="#5a3320" ${sw(3)}/>`:`<rect x="-38" y="-58" width="76" height="22" rx="8" fill="#c8623e" ${sw(5)}/><rect x="-28" y="-54" width="16" height="5" rx="2.5" fill="#fff" opacity=".7"/>`}</g>`}
-function bowlS(cx,by,g){let s='';const n=Math.round(g*1.6),heap=Math.min(22,g*.9);
+<circle cx="${cx-58}" cy="${by-19}" r="6" fill="#cbc3b6" ${sw(2.5)}/><rect x="${cx-78}" y="${by-32}" width="9" height="5" rx="2.5" fill="#fff" opacity=".9"/>
+${tare?`<circle cx="${cx+60}" cy="${by-18}" r="10" fill="#e8735a" ${sw(3)}/><text x="${cx+60}" y="${by-15.5}" text-anchor="middle" font-size="7" font-weight="900" fill="#fff">歸零</text>`:''}`}
+function jarS(tx,ty,rot,open){let b='';for(let i=0;i<20;i++){const row=Math.floor(i/4);b+=beanS(-22+(i%4)*14+(row%2)*7,40-row*9,i*47)}
+  const body='M-34-26q0-14 14-14h40q14 0 14 14v58q0 14-14 14h-40q-14 0-14-14z';
+  return (rot===0?sh(tx,ty+47,42):'')+`<g transform="translate(${tx} ${ty}) rotate(${rot})"><clipPath id="jc"><path d="${body}"/></clipPath>
+<path d="${body}" fill="#fdf6e6"/><g clip-path="url(#jc)">${b}<rect x="18" y="-40" width="20" height="90" fill="${O}" opacity=".1"/></g>${ol(body,5)}
+<rect x="-24" y="-17" width="48" height="27" rx="6" fill="#f7c873" ${sw(3)}/><path d="M-24-10h48" stroke="#e8735a" stroke-width="3"/><text x="0" y="5" text-anchor="middle" font-size="11" font-weight="900" fill="${O}">咖啡豆</text>
+<rect x="-28" y="-32" width="6" height="44" rx="3" fill="#fff" opacity=".9"/><rect x="-28" y="-44" width="56" height="8" rx="3" fill="#eadcc2" ${sw(3)}/>
+${open?`<ellipse cx="0" cy="-44" rx="27" ry="5" fill="#5a3320" ${sw(3)}/>`:`<rect x="-38" y="-60" width="76" height="22" rx="8" fill="#b97a45" ${sw(5)}/><path d="M-30-48q15-3 30 0t28 0" stroke="#8f5a2e" stroke-width="2" fill="none"/><rect x="-30" y="-56" width="14" height="4" rx="2" fill="#fff" opacity=".6"/>`}</g>`}
+function bowlS(cx,by,g){let s=`<ellipse cx="${cx}" cy="${by-44}" rx="38" ry="7" fill="#e9d6b8" ${sw(3)}/>`;const n=Math.round(g*1.6),heap=Math.min(22,g*.9);
   for(let i=0;i<n;i++){const r2=hash(i+99);s+=beanS(cx+(hash(i)-.5)*66*(1-.65*r2),by-40-r2*heap,hash(i+7)*180)}
-  return s+`<path d="M${cx-40} ${by-44}h80q-4 44-40 44q-36 0-40-44z" fill="#fff8ec" ${sw(5)}/><path d="M${cx-30} ${by-36}q2 18 12 26" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".9"/><path d="M${cx-38} ${by-30}h76" stroke="#e8735a" stroke-width="5"/>`}
-function grinderS(tx,ty,s,ang,set){const ex=Math.cos(ang)*64,ey=-196+Math.sin(ang)*18;let tk='';
+  const d=`M${cx-40} ${by-44}h80q-4 44-40 44q-36 0-40-44z`;
+  return s+`<path d="${d}" fill="#fff8ec"/><path d="M${cx+14} ${by-44}h26q-4 44-40 44q24-10 14-44z" fill="#f0dcc0"/><path d="M${cx-39} ${by-30}h78" stroke="#e8735a" stroke-width="5"/>${ol(d,5)}${hl(`M${cx-30} ${by-38}q2 18 12 26`,5)}`}
+function grinderS(tx,ty,s,ang,set){const ex=Math.cos(ang)*64,ey=-196+Math.sin(ang)*18,back=Math.sin(ang)<0;let tk='',kn='';
   for(let i=0;i<10;i++)if(i<3||i>6)tk+=`<line x1="${-36+i*8}" y1="-22" x2="${-36+i*8}" y2="-12" stroke="#fff" stroke-width="2"/>`;
-  return `<g transform="translate(${tx} ${ty}) scale(${s})">
-<rect x="-38" y="-176" width="76" height="150" rx="18" fill="#b9c2cc" ${sw(5)}/>
-<rect x="-38" y="-120" width="76" height="40" fill="#c98a4b" ${sw(4)}/>
-<path d="M-26-160v28M-26-72v34" stroke="#fff" stroke-width="7" opacity=".75" stroke-linecap="round"/>
-<rect x="-44" y="-32" width="88" height="32" rx="10" fill="#6d7680" ${sw(5)}/>${tk}
-<rect x="-14" y="-29" width="28" height="24" rx="5" fill="#fff" ${sw(3)}/>
-<text x="0" y="-11" text-anchor="middle" font-size="16" font-weight="900" fill="${O}">${set}</text>
-<ellipse cx="0" cy="-178" rx="34" ry="11" fill="#8c96a1" ${sw(5)}/>
-<rect x="-6" y="-200" width="12" height="22" rx="3" fill="#6d7680" ${sw(4)}/>
-<path d="M0-196L${ex} ${ey}" stroke="${O}" stroke-width="14" stroke-linecap="round"/><path d="M0-196L${ex} ${ey}" stroke="#6d7680" stroke-width="6" stroke-linecap="round"/>
-<ellipse cx="${ex}" cy="${ey-10}" rx="10" ry="14" fill="#c98a4b" ${sw(4)}/><circle cx="0" cy="-196" r="6" fill="#6d7680" ${sw(3)}/></g>`}
+  for(let i=-3;i<=3;i++)kn+=`<line x1="${i*9}" y1="${-178+Math.abs(i)*.6}" x2="${i*9}" y2="${-170+Math.abs(i)*.3}" stroke="${O}" stroke-width="1.5" opacity=".4"/>`;
+  const arm=`<path d="M0-196L${ex} ${ey}" stroke="${O}" stroke-width="14" stroke-linecap="round"/><path d="M0-196L${ex} ${ey}" stroke="#7b848e" stroke-width="6" stroke-linecap="round"/>
+<ellipse cx="${ex}" cy="${ey-10}" rx="10" ry="14" fill="#b97a45" ${sw(4)}/><ellipse cx="${ex-3}" cy="${ey-15}" rx="3" ry="5" fill="#fff" opacity=".6"/>`;
+  return `<g transform="translate(${tx} ${ty}) scale(${s})">${sh(0,2,58)}<clipPath id="gc"><rect x="-38" y="-176" width="76" height="150" rx="18"/></clipPath>
+<rect x="-38" y="-176" width="76" height="150" rx="18" fill="#c8d0d9"/><g clip-path="url(#gc)"><rect x="16" y="-176" width="24" height="150" fill="#a8b1bc"/>
+<rect x="-38" y="-120" width="76" height="40" fill="#c98a4b"/><rect x="16" y="-120" width="24" height="40" fill="#a96e38"/><path d="M-30-108q14-4 28 0t26 0M-34-94q18 4 36 0t30 0" stroke="#9c6230" stroke-width="2" fill="none"/></g>
+<path d="M-38-120h76M-38-80h76" stroke="${O}" stroke-width="4"/><rect x="-38" y="-176" width="76" height="150" rx="18" fill="none" ${sw(5)}/>
+${hl('M-26-160v28M-26-70v32',7,.8)}
+<rect x="-44" y="-32" width="88" height="32" rx="10" fill="#6d7680" ${sw(5)}/><rect x="18" y="-30" width="22" height="28" rx="6" fill="#5a626b"/>${tk}
+<rect x="-14" y="-29" width="28" height="24" rx="5" fill="#fff" ${sw(3)}/><text x="0" y="-11" text-anchor="middle" font-size="16" font-weight="900" fill="${O}">${set}</text>
+${back?arm:''}<ellipse cx="0" cy="-178" rx="34" ry="11" fill="#97a1ac" ${sw(5)}/>${kn}<rect x="-6" y="-200" width="12" height="22" rx="3" fill="#6d7680" ${sw(4)}/>
+${back?'':arm}<circle cx="0" cy="-196" r="6" fill="#7b848e" ${sw(3)}/></g>`}
 function kettleS(tx,ty,s,rot,temp){const a=((clamp(temp,60,100)-60)/40*240-120)*Math.PI/180,nx=Math.sin(a)*9,ny=-Math.cos(a)*9;
-  const sp='M-38-28C-78-28-68-100-100-108',hd='M40-72C82-78 82-16 40-20';
+  const sp='M-38-28C-78-28-68-100-100-108',hd='M40-72C82-78 82-16 40-20',body='M-48 0h96l-10-82q-38-12-76 0z';
   return `<g transform="translate(${tx} ${ty}) scale(${s}) rotate(${rot})">
-<path d="${sp}" fill="none" stroke="${O}" stroke-width="16" stroke-linecap="round"/><path d="${sp}" fill="none" stroke="#e9eef0" stroke-width="7" stroke-linecap="round"/>
-<path d="${hd}" fill="none" stroke="${O}" stroke-width="16" stroke-linecap="round"/><path d="${hd}" fill="none" stroke="#3f8f80" stroke-width="7" stroke-linecap="round"/>
-<path d="M-48 0h96l-10-82q-38-12-76 0z" fill="#5fb3a3" ${sw(5)}/>
-<ellipse cx="0" cy="-86" rx="30" ry="8" fill="#3f8f80" ${sw(4)}/>
-<path d="M-32-68l-6 54" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".75"/>
+<path d="${sp}" fill="none" stroke="${O}" stroke-width="17" stroke-linecap="round"/><path d="${sp}" fill="none" stroke="#5fb3a3" stroke-width="8" stroke-linecap="round"/>
+<path d="M-60-52C-64-80-76-98-98-104" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
+<path d="${hd}" fill="none" stroke="${O}" stroke-width="17" stroke-linecap="round"/><path d="${hd}" fill="none" stroke="#b97a45" stroke-width="8" stroke-linecap="round"/>
+<path d="${body}" fill="#5fb3a3"/><path d="M16 0h32l-10-82q-12-4-24-5q12 40 2 87z" fill="#4c9c8d"/><path d="M-48 0h96l-1.6-13h-92.8z" fill="#3f8a7c"/>${ol(body,5)}
+<path d="M-46.4-13h92.8" stroke="${O}" stroke-width="3"/>${hl('M-31-70l-6 50',7,.8)}${hl('M-26-76l-1 0',5,.8)}
+<ellipse cx="0" cy="-86" rx="30" ry="8" fill="#3f8a7c" ${sw(4)}/><ellipse cx="-8" cy="-88" rx="10" ry="2.5" fill="#fff" opacity=".5"/>
 <line x1="0" y1="-94" x2="0" y2="-104" stroke="${O}" stroke-width="4"/>
-<circle cx="0" cy="-116" r="14" fill="#fff" ${sw(4)}/><line x1="0" y1="-116" x2="${nx}" y2="${-116+ny}" stroke="#e8553d" stroke-width="3" stroke-linecap="round"/><circle cx="0" cy="-116" r="2.5" fill="${O}"/></g>`}
+<circle cx="0" cy="-116" r="14" fill="#fff" ${sw(4)}/><path d="M-9-116a9 9 0 0 1 18 0" stroke="#f3d0c8" stroke-width="3" fill="none"/>
+<line x1="0" y1="-116" x2="${nx}" y2="${-116+ny}" stroke="#e8553d" stroke-width="3" stroke-linecap="round"/><circle cx="0" cy="-116" r="2.5" fill="${O}"/></g>`}
 function kTip(tx,ty,s,rot){const r=rot*Math.PI/180,x=-100,y=-108;return{x:tx+s*(x*Math.cos(r)-y*Math.sin(r)),y:ty+s*(x*Math.sin(r)+y*Math.cos(r))}}
 function dripperS(cx,top,gr,water,t,bloom){const H=78,TW=62,BW=16,bot=top+H,id='dc'+Math.round(cx)+'_'+Math.round(top);
-  const cone=`M${cx-TW} ${top}L${cx+TW} ${top}L${cx+BW} ${bot}L${cx-BW} ${bot}Z`;
+  const cone=`M${cx-TW} ${top}L${cx+TW} ${top}L${cx+BW} ${bot}L${cx-BW} ${bot}Z`,hd=`M${cx+50} ${top+12}c32-2 30 32-4 30`;
   const gh=gr?24+(bloom?4+Math.sin(t*3)*1.5:0):0,wh=Math.min(54,water*.5);
-  let s=`<clipPath id="${id}"><path d="${cone}"/></clipPath><rect x="${cx-46}" y="${bot-3}" width="92" height="11" rx="5" fill="#f3d0c8" ${sw(4)}/>
-<path d="${cone}" fill="#fffaf0"/><g clip-path="url(#${id})">`;
-  if(gh)s+=`<rect x="${cx-TW}" y="${bot-gh}" width="${2*TW}" height="${gh+2}" fill="#6e4022"/>`;
+  let s=`<clipPath id="${id}"><path d="${cone}"/></clipPath><path d="${hd}" fill="none" stroke="${O}" stroke-width="14" stroke-linecap="round"/><path d="${hd}" fill="none" stroke="#e8f5fb" stroke-width="6" stroke-linecap="round"/>
+<rect x="${cx-46}" y="${bot-3}" width="92" height="11" rx="5" fill="#f3d0c8" ${sw(4)}/><rect x="${cx-38}" y="${bot}" width="26" height="3" rx="1.5" fill="#fff" opacity=".7"/>
+<path d="${cone}" fill="#fffaf0"/><g clip-path="url(#${id})"><path d="M${cx+20} ${top}L${cx+TW} ${top}L${cx+BW} ${bot}L${cx+6} ${bot}z" fill="#f1e6d2"/>`;
+  if(gh)s+=`<rect x="${cx-TW}" y="${bot-gh}" width="${2*TW}" height="${gh+2}" fill="#6e4022"/><rect x="${cx+8}" y="${bot-gh}" width="${TW}" height="${gh+2}" fill="#5a331b"/>`+[0,1,2,3,4,5].map(i=>`<circle cx="${cx-24+i*9}" cy="${bot-gh+6+hash(i)*10}" r="1.6" fill="#a8703f"/>`).join('');
   if(wh>.5)s+=`<rect x="${cx-TW}" y="${bot-gh-wh}" width="${2*TW}" height="${wh}" fill="#b0743c" opacity=".92"/><rect x="${cx-TW}" y="${bot-gh-wh}" width="${2*TW}" height="3" fill="#e2b07c"/>`;
   if(bloom&&gh)for(let i=0;i<6;i++){const ph=(t*.7+hash(i))%1;s+=`<circle cx="${cx-28+hash(i+3)*56}" cy="${bot-gh-wh}" r="${1.5+ph*3.5}" fill="#d9a46a" stroke="${O}" stroke-width="1.2" opacity="${1-ph}"/>`}
   let z=`M${cx-TW+4} ${top}`;for(let x=cx-TW+4;x<cx+TW-8;x+=12)z+=`L${x+6} ${top-10}L${x+12} ${top}`;
-  return s+`</g><path d="${z}Z" fill="#fff" stroke="${O}" stroke-width="2.5" stroke-linejoin="round"/>
-<path d="${cone}" fill="#cfe9f5" fill-opacity=".25" ${sw(5)}/>
-<path d="M${cx-30} ${top+10}L${cx-8} ${bot-6}M${cx+30} ${top+10}L${cx+8} ${bot-6}" stroke="#9cc3d6" stroke-width="2"/>
-<rect x="${cx-TW-8}" y="${top-5}" width="${2*TW+16}" height="10" rx="5" fill="#e8f5fb" ${sw(4)}/>
-<path d="M${cx-TW+12} ${top+12}L${cx-BW-8} ${bot-14}" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".85"/>`}
+  return s+`<path d="M${cx-34} ${top+6}Q${cx-22} ${top+44} ${cx-8} ${bot-4}M${cx-12} ${top+6}Q${cx-6} ${top+44} ${cx} ${bot-4}M${cx+14} ${top+6}Q${cx+12} ${top+44} ${cx+8} ${bot-4}M${cx+38} ${top+6}Q${cx+26} ${top+44} ${cx+13} ${bot-4}" stroke="#9cc3d6" stroke-width="2" fill="none" opacity=".8"/></g>
+<path d="${z}Z" fill="#fff" stroke="${O}" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="${cone}" fill="#cfe9f5" fill-opacity=".22" ${sw(5)}/>
+<rect x="${cx-TW-8}" y="${top-5}" width="${2*TW+16}" height="10" rx="5" fill="#e8f5fb" ${sw(4)}/><rect x="${cx-TW-2}" y="${top-3}" width="34" height="3" rx="1.5" fill="#fff"/>
+${hl(`M${cx-TW+12} ${top+12}L${cx-BW-8} ${bot-14}`,6)}${hl(`M${cx-TW+26} ${top+12}L${cx-BW+2} ${bot-30}`,2.5,.7)}`}
 function serverS(cx,by,liq,col){const top=by-92,id='sv'+Math.round(cx)+'_'+Math.round(by),lh=Math.min(85,liq/300*80);
   const d=`M${cx-40} ${top}h80q14 0 16 20l4 50q2 22-24 22h-72q-26 0-24-22l4-50q2-20 16-20z`,hd=`M${cx+56} ${top+22}c34 0 34 46 4 46`;
-  return `<path d="${hd}" fill="none" stroke="${O}" stroke-width="14" stroke-linecap="round"/><path d="${hd}" fill="none" stroke="#e8f5fb" stroke-width="6" stroke-linecap="round"/>
-<clipPath id="${id}"><path d="${d}"/></clipPath><path d="${d}" fill="#eef8fc"/>
-${lh>0?`<rect x="${cx-62}" y="${by-lh}" width="124" height="${lh}" fill="${col}" clip-path="url(#${id})"/>`:''}
-<path d="${d}" fill="#cfe9f5" fill-opacity=".2" ${sw(5)}/>
-<rect x="${cx-44}" y="${top-6}" width="88" height="10" rx="5" fill="#e8f5fb" ${sw(4)}/>
-<path d="M${cx-44} ${top+26}l-3 38" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".9"/>`}
+  return sh(cx,by+3,62)+`<path d="${hd}" fill="none" stroke="${O}" stroke-width="14" stroke-linecap="round"/><path d="${hd}" fill="none" stroke="#e8f5fb" stroke-width="6" stroke-linecap="round"/>
+<clipPath id="${id}"><path d="${d}"/></clipPath><path d="${d}" fill="#eef8fc"/><g clip-path="url(#${id})">
+${lh>0?`<rect x="${cx-62}" y="${by-lh}" width="124" height="${lh}" fill="${col}"/><rect x="${cx-62}" y="${by-lh}" width="124" height="4" fill="#fff" opacity=".3"/>`:''}
+<path d="M${cx+30} ${top}h40v92h-60q30-30 20-92z" fill="#6fa8c4" opacity=".14"/></g>
+<path d="${d}" fill="none" ${sw(5)}/><path d="M${cx+30} ${by-30}h12M${cx+33} ${by-50}h12M${cx+35} ${by-70}h10" stroke="#7fb3cc" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="${cx-44}" y="${top-6}" width="88" height="10" rx="5" fill="#e8f5fb" ${sw(4)}/><rect x="${cx-38}" y="${top-4}" width="26" height="3" rx="1.5" fill="#fff"/>
+${hl(`M${cx-45} ${top+26}l-3 38`,7,.9)}${hl(`M${cx-34} ${top+22}l-1 12`,4,.8)}`}
 function brewerS(cx,by,liq,col,gr,water,t,bloom){return serverS(cx,by,liq,col)+dripperS(cx,by-181,gr,water,t,bloom)}
-const CUP={saucer:'M-72 0a72 15 0 1 0 144 0a72 15 0 1 0-144 0',handle:'M40-66c40-6 40 46 2 40',body:'M-50-82h100q-4 72-50 74q-46-2-50-74z',
-  coffee:'M-46-82a46 9 0 1 0 92 0a46 9 0 1 0-92 0',hl:'M-36-64q0 30 14 46',band:'M-48-58h96',steam:'M-14-102q-12-14 0-28t0-28M14-100q-12-14 0-28t0-28'};
-function cupS(tx,ty,s,col){return `<g transform="translate(${tx} ${ty}) scale(${s})"><path d="${CUP.steam}" stroke="${O}" stroke-width="4" fill="none" stroke-linecap="round" opacity=".35"/>
-<path d="${CUP.saucer}" fill="#fff8ec" ${sw(5)}/><path d="${CUP.handle}" fill="none" stroke="${O}" stroke-width="18" stroke-linecap="round"/><path d="${CUP.handle}" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
-<path d="${CUP.body}" fill="#fff" ${sw(5)}/><path d="${CUP.band}" stroke="#e8735a" stroke-width="7"/><path d="${CUP.coffee}" fill="${col}" ${sw(4)}/>
-<path d="${CUP.hl}" stroke="#ffe9c9" stroke-width="7" fill="none" stroke-linecap="round"/></g>`}
-const stream=(a,b)=>`<path d="M${a.x} ${a.y}Q${a.x-6} ${(a.y+b.y)/2} ${b.x} ${b.y}" stroke="${O}" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M${a.x} ${a.y}Q${a.x-6} ${(a.y+b.y)/2} ${b.x} ${b.y}" stroke="#9fdcf5" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
+const CUP={saucer:'M-72 0a72 15 0 1 0 144 0a72 15 0 1 0-144 0',ring:'M-46-2a46 8 0 1 0 92 0a46 8 0 1 0-92 0',handle:'M40-66c40-6 40 46 2 40',body:'M-50-82h100q-4 72-50 74q-46-2-50-74z',
+  shade:'M18-82h32q-4 72-50 74q34-16 18-74z',coffee:'M-46-82a46 9 0 1 0 92 0a46 9 0 1 0-92 0',hl:'M-36-64q0 30 14 46',band:'M-48-58h96',steam:'M-14-102q-12-14 0-28t0-28M14-100q-12-14 0-28t0-28'};
+function cupS(tx,ty,s,col){return `<g transform="translate(${tx} ${ty}) scale(${s})">${sh(0,6,76)}<path d="${CUP.steam}" stroke="${O}" stroke-width="4" fill="none" stroke-linecap="round" opacity=".35"/>
+<path d="${CUP.saucer}" fill="#fff8ec" ${sw(5)}/><path d="${CUP.ring}" fill="#f1e2cb"/><path d="${CUP.handle}" fill="none" stroke="${O}" stroke-width="18" stroke-linecap="round"/><path d="${CUP.handle}" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
+<path d="${CUP.body}" fill="#fff"/><path d="${CUP.shade}" fill="#f0e4d6"/><path d="${CUP.band}" stroke="#e8735a" stroke-width="7"/>${ol(CUP.body,5)}<path d="${CUP.coffee}" fill="${col}" ${sw(4)}/>
+<ellipse cx="-14" cy="-84" rx="14" ry="2.5" fill="#fff" opacity=".35"/><path d="${CUP.hl}" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" opacity=".9"/></g>`}
+const stream=(a,b)=>`<path d="M${a.x} ${a.y}Q${a.x-6} ${(a.y+b.y)/2} ${b.x} ${b.y}" stroke="${O}" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M${a.x} ${a.y}Q${a.x-6} ${(a.y+b.y)/2} ${b.x} ${b.y}" stroke="#9fdcf5" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="${b.x}" cy="${b.y}" r="5" fill="#cdeefa" ${sw(2)}/>`;
 
 /* ---------- 共用 UI ---------- */
 function panel(text,list){msg.innerHTML=text;btns.innerHTML='';list.forEach(b=>{const el=document.createElement('button');
@@ -381,7 +401,7 @@ function makeCard(res){const W=720,H=1200,c=document.createElement('canvas');c.w
   x.strokeStyle='rgba(58,36,22,.35)';x.lineWidth=4;x.stroke(P('steam'));x.strokeStyle=O;
   x.fillStyle='#fff8ec';x.lineWidth=5;x.fill(P('saucer'));x.stroke(P('saucer'));
   x.lineWidth=18;x.stroke(P('handle'));x.strokeStyle='#fff';x.lineWidth=8;x.stroke(P('handle'));
-  x.strokeStyle=O;x.lineWidth=5;x.fillStyle='#fff';x.fill(P('body'));x.stroke(P('body'));
+  x.fillStyle='#f1e2cb';x.fill(P('ring'));x.strokeStyle=O;x.lineWidth=5;x.fillStyle='#fff';x.fill(P('body'));x.fillStyle='#f0e4d6';x.fill(P('shade'));x.stroke(P('body'));
   x.strokeStyle='#e8735a';x.lineWidth=7;x.save();x.clip(P('body'));x.stroke(P('band'));x.restore();
   x.strokeStyle=O;x.lineWidth=4;x.fillStyle=res.col;x.fill(P('coffee'));x.stroke(P('coffee'));
   x.strokeStyle='#ffe9c9';x.lineWidth=7;x.stroke(P('hl'));x.restore();
