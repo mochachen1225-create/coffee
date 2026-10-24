@@ -91,6 +91,8 @@ header{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-
  * 注水流速：1.5–8 g/s，依手指移動速度（流速 = 1.5 + 速度/50）
  * 粉吸水：豆重 × 2（20g 豆吸 40g，最後約得 260g 咖啡液）
  * 下水速度 = (0.3 + 0.2 × 刻度) × (0.5 + 0.5 × min(1, 積水/30g)) g/s；刻度 7 最快 1.7 g/s
+ * 操作：水壺、豆罐、分享壺、濾杯都用手指拿起來拖曳；水壺在濾杯上方（x 105–225、y 50–180）才會出水
+ * 豆罐：壺口在碗上方才會倒豆；濾杯：悶蒸開始後隨時可拿起，拖離 60 以上就算移開（沒注完的注按缺水計誤差）
  * 快轉：等待時 ×5；計時器顯示「沖煮時間」，快轉時一樣跟著跑，不能作弊
  * 預熱：沒沖濾紙 → 乾淨度 −1.5；沒倒溫杯水 → 稀釋（酸質、醇厚、乾淨度扣分）
  * 萃取指數 E（0 最佳，負 = 萃取不足，正 = 過萃）：
@@ -144,11 +146,11 @@ function bgS(){return `<rect width="360" height="400" fill="#f8e4c3"/><circle cx
 <rect x="-6" y="292" width="372" height="16" rx="4" fill="#e3a865" ${sw(5)}/>
 <rect x="10" y="296" width="60" height="4" rx="2" fill="#fff" opacity=".5"/>`}
 function beanS(x,y,r){return `<g transform="translate(${x} ${y}) rotate(${r})"><ellipse rx="5.5" ry="4" fill="#7a4524" ${sw(2)}/><path d="M-3 0Q0-1.5 3 0" stroke="${O}" stroke-width="1.5" fill="none"/></g>`}
-function scaleS(cx,by,txt){return `<rect x="${cx-82}" y="${by-36}" width="164" height="36" rx="12" fill="#ece6dc" ${sw(5)}/>
+function scaleS(cx,by,txt,tare){return `<rect x="${cx-82}" y="${by-36}" width="164" height="36" rx="12" fill="#ece6dc" ${sw(5)}/>
 <rect x="${cx-74}" y="${by-46}" width="148" height="12" rx="6" fill="#bfb6a8" ${sw(4)}/>
 <rect x="${cx-38}" y="${by-29}" width="76" height="22" rx="6" fill="#20352c" ${sw(3)}/>
 <text x="${cx}" y="${by-12.5}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="15" font-weight="700" fill="#8dffb8">${txt}</text>
-<rect x="${cx-74}" y="${by-31}" width="22" height="6" rx="3" fill="#fff" opacity=".8"/>`}
+<rect x="${cx-74}" y="${by-31}" width="22" height="6" rx="3" fill="#fff" opacity=".8"/>${tare?`<circle cx="${cx+60}" cy="${by-18}" r="10" fill="#e8735a" ${sw(3)}/><text x="${cx+60}" y="${by-15.5}" text-anchor="middle" font-size="7" font-weight="900" fill="#fff">歸零</text>`:''}`}
 function jarS(tx,ty,rot,open){let b='';[[-18,30],[0,34],[18,28],[-10,20],[10,22],[-20,10],[18,12]].forEach((p,i)=>b+=beanS(p[0],p[1],i*40));
   return `<g transform="translate(${tx} ${ty}) rotate(${rot})"><rect x="-34" y="-40" width="68" height="86" rx="16" fill="#fdf3dc" ${sw(5)}/>${b}
 <rect x="-26" y="-14" width="52" height="24" rx="6" fill="#f7c873" ${sw(3)}/><text x="0" y="3" text-anchor="middle" font-size="12" font-weight="800" fill="${O}">咖啡豆</text>
@@ -230,25 +232,33 @@ function reset(){R={rinsed:false,dumped:false,bean:0,grind:4,grindEnd:0,stale:0,
 function go(n){cur=n;S=STEPS[n];$('#step').textContent=n?`・${n>=7?(n===7&&G.idx>=4?8:7):n}/8 ${n===7&&G.idx>=4?ST[8]:ST[n]}`:'';
   $('#timer').style.display=n===7?'block':'none';S.enter()}
 
+const inBox=(p,a,b,c,d)=>!!p&&p.x>=a&&p.x<=c&&p.y>=b&&p.y<=d;
+function kAt(tip,s,rot,temp){const o=kTip(0,0,s,rot);return kettleS(tip.x-o.x,tip.y-o.y,s,rot,temp)}
+// 手上的水壺：在濾杯上方就傾斜注水（壺嘴在手指上方），否則壺身跟著手指
+function heldKettle(f,pour,tipMaxY,temp){if(pour){const tip={x:f.x,y:Math.min(f.y-40,tipMaxY)};return{s:kAt(tip,.8,-30,temp),tip}}return{s:kettleS(f.x,f.y+40,.8,0,temp)}}
+
 const STEPS=[
 /* 0 開場 */{enter(){panel('依照<b>粕谷哲 4:6 法</b>，沖一杯 20g 豆、300g 水的手沖。<br><span class="sub">慢慢來，做太快咖啡會變難喝。</span>',[{t:'開始沖煮 ☕',c:'go',on:()=>{reset();go(1)}}])},
   scene(){return kettleS(80,300,.7,0,93)+brewerS(190,300,0,'',false,0,0,false)+grinderS(305,300,.7,.6,7)}},
-/* 1 準備 */{enter(){this.p()},
-  p(){panel('步驟 1：先用熱水<b>沖濕濾紙</b>、溫熱分享壺。',[
-    {t:'💧 沖濕濾紙',dis:G.rinseT>0,on:()=>{G.rinseT=1.6;R.rinsed=true;R.dumped=false;snd.pour(.6);this.p()}},
-    {t:'倒掉溫杯水',c:'alt',dis:!(G.srv>0)||G.rinseT>0||G.dumpT>0,on:()=>{G.dumpT=.8;R.dumped=true;snd.splash();this.p()}},
-    {t:'下一步 →',c:'go',dis:G.rinseT>0||G.dumpT>0,on:()=>go(2)}])},
-  update(dt){if(G.rinseT>0){G.rinseT-=dt;G.srv=Math.min(50,G.srv+dt*35);if(G.rinseT<=0){G.rinseT=0;snd.pour(0);this.p()}}
-    if(G.dumpT>0){G.dumpT-=dt;G.srv=Math.max(0,G.srv-dt*80);if(G.dumpT<=0){G.dumpT=0;G.srv=0;this.p()}}},
-  scene(t){let s=brewerS(165,300,G.srv,'#bfe3f2',false,G.rinseT>0?14:0,t,false);
-    if(G.rinseT>0){s+=kettleS(312,140,.8,-30,93)+stream(kTip(312,140,.8,-30),{x:165+Math.sin(t*6)*25,y:150})+`<line x1="165" y1="205" x2="165" y2="${300-Math.min(85,G.srv/300*80)}" stroke="#9fdcf5" stroke-width="3"/>`}
+/* 1 準備 */{enter(){G.carry=null;G.f=null;panel('步驟 1：<b>拿起水壺</b>拖到濾杯上，沖濕濾紙、溫熱分享壺。<br><span class="sub">道具都可以用手指拿起來拖曳</span>',[{t:'下一步 →',c:'go',on:()=>{snd.pour(0);go(2)}}])},
+  down(p){G.f=p;G.carry=inBox(p,250,170,355,300)?'k':inBox(p,95,110,235,300)?'s':null},
+  move(p){G.f=p},
+  up(){if(G.carry==='s'&&G.f.x<100&&G.srv>0){G.srv=0;R.dumped=true;snd.splash();toast('溫杯水倒掉了')}G.carry=null},
+  update(dt){G.pour=G.carry==='k'&&inBox(G.f,105,70,225,200);if(G.pour){G.srv=Math.min(60,G.srv+dt*30);if(G.srv>15){R.rinsed=true;R.dumped=false}}snd.pour(G.pour?.6:0)},
+  scene(t){let s=`<rect x="6" y="262" width="78" height="38" rx="10" fill="#9aa3ad" ${sw(5)}/><rect x="16" y="270" width="58" height="14" rx="6" fill="#5d666f"/><text x="45" y="296" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">水槽</text>`;
+    if(G.carry==='s')s+=`<g transform="rotate(${G.f.x<100?-70:0} ${G.f.x} ${G.f.y})">${brewerS(G.f.x,G.f.y+45,G.srv,'#bfe3f2',false,0,t,false)}</g>`;
+    else s+=brewerS(165,300,G.srv,'#bfe3f2',false,G.pour?14:0,t,false);
+    if(G.carry==='k'){const k=heldKettle(G.f,G.pour,108,93);s+=k.s;if(G.pour)s+=stream(k.tip,{x:clamp(G.f.x,130,200),y:150})+`<line x1="165" y1="205" x2="165" y2="${300-Math.min(85,G.srv/300*80)}" stroke="#9fdcf5" stroke-width="3"/>`}
     else s+=kettleS(312,300,.75,0,93);return s}},
-/* 2 稱豆 */{enter(){this.p()},
-  p(){panel('步驟 2：<b>按住</b>倒豆子，放開停止。目標 <b>20.0g</b>',[{t:'按住倒豆',c:'big',hold:v=>{G.hold=v;G.holdT=0}},{t:'完成 →',c:'go',id:'done',dis:R.bean<1,on:()=>go(3)}])},
-  update(dt){if(!G.hold)return;G.holdT+=dt;const r=1.2+Math.min(4.8,G.holdT*5);R.bean+=r*dt;G.clk-=dt;if(G.clk<=0){snd.bean();G.clk=.5/r}
+/* 2 稱豆 */{enter(){G.carry=false;G.f=null;G.hold=false;panel('步驟 2：<b>拿起豆罐</b>移到碗上方倒豆，移開就停。目標 <b>20.0g</b>',[{t:'完成 →',c:'go',id:'done',dis:R.bean<1,on:()=>go(3)}])},
+  down(p){G.f=p;G.carry=inBox(p,15,190,105,305)},
+  move(p){G.f=p},
+  up(){G.carry=false},
+  update(dt){const tilt=G.carry&&G.f.x>125&&G.f.x<205&&G.f.y<215;if(tilt&&!G.hold)G.holdT=0;G.hold=tilt;if(!tilt)return;
+    G.holdT+=dt;const r=1.2+Math.min(4.8,G.holdT*5);R.bean+=r*dt;G.clk-=dt;if(G.clk<=0){snd.bean();G.clk=.5/r}
     const d=$('#done');if(d&&R.bean>=1)d.disabled=false},
   scene(t){let s=scaleS(200,300,R.bean.toFixed(1)+'g')+bowlS(200,254,R.bean);
-    if(G.hold){s+=jarS(130,120,115,true);for(let i=0;i<5;i++){const ph=(t*2.4+i/5)%1;s+=beanS(166+34*ph,137+95*ph*ph,ph*400+i*60)}}
+    if(G.carry){s+=jarS(G.f.x,G.f.y,G.hold?115:0,G.hold);if(G.hold){const mx=G.f.x+36,my=G.f.y+17;for(let i=0;i<5;i++){const ph=(t*2.4+i/5)%1;s+=beanS(mx+(200-mx)*ph,my+(232-my)*ph*ph,ph*400+i*60)}}}
     else s+=jarS(60,254,0,false);return s}},
 /* 3 磨豆 */{enter(){this.p()},
   p(){let d='';for(let n=1;n<=10;n++)d+=`<button data-n="${n}" class="${n===R.grind?'on':''}" ${G.lock?'disabled':''}>${n}</button>`;
@@ -263,45 +273,55 @@ const STEPS=[
   up(){G.lastP=null},
   scene(){const w=Math.round(G.turns/8*200);return grinderS(180,300,1.15,G.ang,R.grind)+`<rect x="80" y="330" width="200" height="22" rx="11" fill="#fff8ec" ${sw(4)}/>
 ${w>4?`<rect x="80" y="330" width="${w}" height="22" rx="11" fill="#7fcf9a" ${sw(4)}/>`:''}<text x="180" y="376" text-anchor="middle" font-size="15" font-weight="800" fill="#fff8ec">研磨 ${Math.floor(G.turns)}/8 圈</text>`}},
-/* 4 熱水 */{enter(){G.temp=78;G.heat=true;panel('步驟 4：水壺加熱中…在 <b>93°C</b> 附近按停。',[{t:'停！',c:'big',on:()=>{G.heat=false;R.temp=Math.round(G.temp);
-    panel(`水溫停在 <b>${R.temp}°C</b>。`,[{t:'下一步 →',c:'go',on:()=>go(5)}])}}])},
+/* 4 熱水 */{enter(){G.temp=78;G.heat=true;panel('步驟 4：水壺加熱中…在 <b>93°C</b> 附近<b>把水壺從底座拿起來</b>。',[])},
+  down(p){if(G.heat&&inBox(p,80,90,290,300)){G.heat=false;R.temp=Math.round(G.temp);snd.tap();
+    panel(`水溫 <b>${R.temp}°C</b>，水壺拿起來了。`,[{t:'下一步 →',c:'go',on:()=>go(5)}])}},
   update(dt){if(G.heat)G.temp=Math.min(100,G.temp+1.6*dt)},
-  scene(t){const tp=Math.round(G.temp),tip=kTip(180,282,1.3,0);let s=`<rect x="110" y="282" width="140" height="18" rx="9" fill="#555" ${sw(5)}/>`+kettleS(180,282,1.3,0,G.temp)+
+  scene(t){const tp=Math.round(G.temp),ky=G.heat?282:250,tip=kTip(180,ky,1.3,0);let s=`<rect x="110" y="282" width="140" height="18" rx="9" fill="#555" ${sw(5)}/>`+kettleS(180,ky,1.3,0,G.temp)+
     `<text x="180" y="62" text-anchor="middle" font-size="46" font-weight="900" fill="${tp>=100?'#e8553d':O}">${tp}°C</text>`;
     if(tp>=85)for(let i=0;i<3;i++){const ph=(t*.8+i/3)%1;s+=`<path d="M${tip.x-4+i*6} ${tip.y-6-ph*40}q-8-8 0-16" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="${(1-ph)*(tp>=100?1:.6)}"/>`}
     if(tp>=100)s+=`<text x="180" y="92" text-anchor="middle" font-size="16" font-weight="800" fill="#e8553d">沸騰中！</text>`;return s}},
 /* 5 選口味 */{enter(){const c=k=>()=>{R.taste=k;go(6)};
     panel('步驟 5：前 40%（120g）分兩注，決定這杯的味道：',[{t:'偏甜<small>40g + 80g</small>',on:c('sweet')},{t:'平衡<small>60g + 60g</small>',c:'go',on:c('bal')},{t:'偏酸亮<small>80g + 40g</small>',c:'alt',on:c('bright')}])},
   scene(){return cupS(180,296,1.6,'#5a2e14')}},
-/* 6 歸零 */{enter(){G.z=0;this.p()},
-  p(){const L=[['倒粉進濾杯',()=>{G.z=1;snd.bean();setTimeout(snd.bean,80);this.p()}],['放上秤',()=>{G.z=2;this.p()}],['歸零・開始計時 ⏱',()=>{snd.ding();go(7)}]];
-    panel('步驟 6：把粉倒進濾杯、放上秤，<b>歸零</b>後開始計時。',[{t:L[G.z][0],c:G.z===2?'go':'',on:L[G.z][1]}])},
+/* 6 歸零 */{enter(){G.z=0;G.carry=false;this.p()},
+  p(){const T=['把粉倒進濾杯。','把濾杯連分享壺<b>拿起來，放到秤上</b>。','按秤上的紅色<b>歸零</b>鍵，開始計時。'];
+    panel('步驟 6：'+T[G.z],G.z===0?[{t:'倒粉進濾杯',on:()=>{G.z=1;snd.bean();setTimeout(snd.bean,80);this.p()}}]:[])},
+  down(p){G.f=p;if(G.z===1&&inBox(p,10,90,170,300))G.carry=true;else if(G.z===2&&inBox(p,138,250,302,305)){snd.ding();go(7)}},
+  move(p){G.f=p},
+  up(){if(G.carry&&G.f.x>150){G.z=2;snd.tap();this.p()}G.carry=false},
   scene(t){const w=360+R.bean+(R.rinsed&&!R.dumped?50:0);
-    return G.z<2?scaleS(250,300,'0.0g')+brewerS(85,300,0,'',G.z>0,0,t,false):scaleS(200,300,w.toFixed(1)+'g')+brewerS(200,254,0,'',true,0,t,false)}},
-/* 7 注水 → 8 移開濾杯 */{enter(){Object.assign(G,{t:0,cum:0,bed:0,abs:0,liq:0,idx:0,started:[],touch:false,ff:false,fs:0,p:null,pp:null,bloom:null,T:TASTE[R.taste],
+    if(G.z===2)return scaleS(220,300,w.toFixed(1)+'g',1)+brewerS(220,254,0,'',true,0,t,false);
+    return scaleS(220,300,'0.0g',1)+(G.carry?brewerS(G.f.x,G.f.y+60,0,'',true,0,t,false):brewerS(75,300,0,'',G.z>0,0,t,false))}},
+/* 7 注水 → 8 移開濾杯 */{enter(){Object.assign(G,{t:0,cum:0,bed:0,abs:0,liq:0,idx:0,started:[],pour:false,carry:null,f:null,ff:false,fs:0,p:null,pp:null,bloom:null,T:TASTE[R.taste],
     drain:.3+.2*R.grind});this.p()},
   p(){const N=['悶蒸','第二注','第三注','第四注'],ff={t:G.ff?'⏸ 正常速度':'⏩ 快轉',c:'alt',on:()=>{G.ff=!G.ff;this.p()}};
     $('#step').textContent=G.idx>=4?'・8/8 移開濾杯':'・7/8 注水';
-    if(G.idx<4)panel(`<b>${N[G.idx]}</b>：在濾杯上由中心往外畫<b>螺旋</b>注水，注到 <b>${G.T[G.idx]}g</b>。<br><span class="sub">每一注之前，要等粉面上的水降下去。</span>`,[ff]);
-    else panel('步驟 8：注水完成！看準時間<b>移開濾杯</b>。<br><span class="sub">目標總時間 3:20–3:30</span>',[ff,{t:'移開濾杯',c:'go',on:()=>{R.time=G.t;R.bedLeft=G.bed;snd.pour(0);snd.done();finish()}}])},
-  down(p){if(G.idx>=4)return;G.touch=true;G.p=G.pp=p;G.fs=0;if(G.ff){G.ff=false;this.p()}
-    if(!G.started[G.idx]){G.started[G.idx]=true;
-      if(G.idx===0){G.bloom=G.t;R.stale=(performance.now()-R.grindEnd)/1000}
-      else if(G.bed>8||(G.idx===1&&G.t-G.bloom<35)){R.early++;snd.bad();toast('太早了！粉面上還有水 💦')}}},
-  move(p){if(G.touch)G.p=p},
-  up(){if(!G.touch)return;G.touch=false;snd.pour(0);const i0=G.idx;
+    if(G.idx<4)panel(`<b>${N[G.idx]}</b>：<b>拿起水壺</b>，在濾杯上由中心往外畫<b>螺旋</b>注水，注到 <b>${G.T[G.idx]}g</b>。<br><span class="sub">每一注之前，要等粉面上的水降下去。</span>`,[ff]);
+    else panel('步驟 8：注水完成！看準時間，把<b>濾杯拿起來移開</b>。<br><span class="sub">目標總時間 3:20–3:30</span>',[ff])},
+  // 拿水壺：從右邊拿起；拿濾杯：悶蒸開始後隨時可拿起移開（拖離 60 以上才算）
+  down(p){G.f=p;if(inBox(p,250,190,355,300)){G.carry='k';if(G.ff){G.ff=false;this.p()}}else if(G.started[0]&&inBox(p,95,60,235,165)){G.carry='d';G.d0=p}},
+  move(p){G.f=p},
+  up(){if(G.carry==='d'&&Math.hypot(G.f.x-G.d0.x,G.f.y-G.d0.y)>60){for(;G.idx<4;G.idx++)R.errs.push(G.cum-G.T[G.idx]);
+      R.time=G.t;R.bedLeft=G.bed;G.carry=null;snd.pour(0);snd.done();finish();return}
+    G.carry=null;this.stop()},
+  start(){G.pour=true;G.p=G.pp=G.f;G.fs=0;if(G.idx>=4||G.started[G.idx])return;G.started[G.idx]=true;
+    if(G.idx===0){G.bloom=G.t;R.stale=(performance.now()-R.grindEnd)/1000}
+    else if(G.bed>8||(G.idx===1&&G.t-G.bloom<35)){R.early++;snd.bad();toast('太早了！粉面上還有水 💦')}},
+  stop(){if(!G.pour)return;G.pour=false;snd.pour(0);const i0=G.idx;
     while(G.idx<4&&G.cum>=G.T[G.idx]-2.5){R.errs.push(G.cum-G.T[G.idx]);G.idx++}
-    if(G.idx>i0){snd.ding();this.p()}},
-  update(dt){const sd=dt*(G.ff&&!G.touch?5:1);G.t+=sd;
-    if(G.touch){const v=Math.hypot(G.p.x-G.pp.x,G.p.y-G.pp.y)/Math.max(dt,1e-3);G.pp=G.p;G.fs=G.fs*.75+v*.25;
+    if(i0>=4)R.errs[3]=G.cum-G.T[3];if(G.idx>i0){snd.ding();this.p()}},
+  update(dt){const on=G.carry==='k'&&inBox(G.f,105,50,225,180);if(on&&!G.pour)this.start();else if(!on&&G.pour)this.stop();
+    const sd=dt*(G.ff&&G.carry!=='k'?5:1);G.t+=sd;
+    if(G.pour){G.p=G.f;const v=Math.hypot(G.p.x-G.pp.x,G.p.y-G.pp.y)/Math.max(dt,1e-3);G.pp=G.p;G.fs=G.fs*.75+v*.25;
       const fl=clamp(1.5+G.fs/50,1.5,8);G.cum+=fl*dt;G.bed+=fl*dt;R.pourT+=dt;if(G.fs>30&&Math.hypot(G.p.x-165,G.p.y-113)<90)R.moveT+=dt;snd.pour(fl/8)}
     const a=Math.min(G.bed,10*sd,2*R.bean-G.abs);if(a>0){G.bed-=a;G.abs+=a}
-    const d=Math.min(G.bed,G.drain*(.5+.5*Math.min(1,G.bed/30))*sd);G.bed-=d;G.liq+=d;
-    $('#timer').textContent=fmt(G.t)+(G.ff&&!G.touch?' ×5':'')},
-  scene(t){const bl=G.bloom!==null&&G.t-G.bloom<40&&G.idx<=1;let s=scaleS(165,300,G.cum.toFixed(1)+'g')+brewerS(165,254,G.liq,'#5a2e14',true,G.bed,G.t,bl);
-    if(G.bed>.3||G.abs>=2*R.bean&&G.liq>0&&G.bed>.05)s+=`<line x1="165" y1="160" x2="165" y2="${254-Math.min(85,G.liq/300*80)}" stroke="#7a4524" stroke-width="${G.bed>3?3:2}" stroke-dasharray="${G.bed>3?'none':'4 8'}"/>`;
-    if(G.touch){const gh=24,wh=Math.min(54,G.bed*.5);s+=kettleS(312,95,.8,-30,R.temp)+stream(kTip(312,95,.8,-30),{x:clamp(G.p.x,125,205),y:151-gh-wh})+
-      `<circle cx="${G.p.x}" cy="${G.p.y}" r="16" fill="#fff" opacity=".35" ${sw(3)}/>`}
+    if(G.carry!=='d'){const d=Math.min(G.bed,G.drain*(.5+.5*Math.min(1,G.bed/30))*sd);G.bed-=d;G.liq+=d}
+    $('#timer').textContent=fmt(G.t)+(G.ff&&G.carry!=='k'?' ×5':'')},
+  scene(t){const bl=G.bloom!==null&&G.t-G.bloom<40&&G.idx<=1,dh=G.carry==='d';
+    let s=scaleS(165,300,G.cum.toFixed(1)+'g')+(dh?serverS(165,254,G.liq,'#5a2e14')+dripperS(G.f.x,G.f.y-40,true,G.bed,G.t,bl):brewerS(165,254,G.liq,'#5a2e14',true,G.bed,G.t,bl));
+    if(!dh&&(G.bed>.3||G.abs>=2*R.bean&&G.liq>0&&G.bed>.05))s+=`<line x1="165" y1="160" x2="165" y2="${254-Math.min(85,G.liq/300*80)}" stroke="#7a4524" stroke-width="${G.bed>3?3:2}" stroke-dasharray="${G.bed>3?'none':'4 8'}"/>`;
+    if(G.carry==='k'){const k=heldKettle(G.f,G.pour,62,R.temp);s+=k.s;if(G.pour)s+=stream(k.tip,{x:clamp(G.f.x,125,205),y:151-24-Math.min(54,G.bed*.5)})}
     else s+=kettleS(305,300,.65,0,R.temp);return s}}];
 
 /* ---------- 指標事件 & 主迴圈 ---------- */
